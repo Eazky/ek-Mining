@@ -501,7 +501,11 @@ function CreateAllBlips()
     if not blips.smelting then
         blips.smelting = CreateStoneSmeltingBlip()
     end
-    
+
+    if not blips.selling then
+        blips.selling = CreateStoneSellingBlip()
+    end
+
     if Config.MiningArea[1].debug then
         print("^2[DEBUG] All blips created for player with required job^0")
     end
@@ -641,6 +645,30 @@ function CreateStoneSmeltingBlip()
     
     if Config.MiningArea[1].debug then
         print("^2[DEBUG] Stone smelting blip created at coords: " .. tostring(smeltingCoords) .. "^0")
+    end
+    
+    return blip
+end
+
+function CreateStoneSellingBlip()
+    if not Config.Selling[1] or not Config.Selling[1].coords then
+        print("^1[ERROR] No selling configuration found^0")
+        return nil
+    end
+    
+    local sellingCoords = Config.Selling[1].coords
+    local blip = AddBlipForCoord(sellingCoords.x, sellingCoords.y, sellingCoords.z)
+    SetBlipSprite(blip, 276) -- Dollar sign sprite
+    SetBlipDisplay(blip, 4)
+    SetBlipScale(blip, 1.5)
+    SetBlipColour(blip, 5) -- Green color for selling
+    SetBlipAsShortRange(blip, true)
+    BeginTextCommandSetBlipName("STRING")
+    AddTextComponentSubstringPlayerName(_U('mineral_trader'))
+    EndTextCommandSetBlipName(blip)
+    
+    if Config.MiningArea[1].debug then
+        print("^2[DEBUG] Stone selling blip created at coords: " .. tostring(sellingCoords) .. "^0")
     end
     
     return blip

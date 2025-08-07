@@ -291,6 +291,265 @@ CreateThread(function()
 end)
 
 -- ===============================================
+-- Selling
+-- ===============================================
+
+local sellingPeds = {} -- Store selling peds for cleanup
+
+-- Function to start selling items
+local function startSelling(sellerIndex)
+    if not HasRequiredJob() then
+        ESX.ShowNotification(_U('need_required_job_to_sell'))
+        return
+    end
+    
+    local playerPed = PlayerPedId()
+    local config = Config.Selling[sellerIndex]
+    
+    if not config then
+        print("^1[ERROR] No selling configuration found for index: " .. sellerIndex .. "^0")
+        return
+    end
+    
+    -- Check if player is in vehicle
+    if IsPedInAnyVehicle(playerPed, false) then
+        ESX.ShowNotification(_U('cant_do_in_vehicle'))
+        return
+    end
+
+    -- Create selling menu
+    local menuOptions = {
+        {
+            title = _U('sell_items_title'),
+            description = _U('sell_items_desc'),
+            icon = 'fas fa-coins',
+            disabled = true
+        }
+    }
+    
+    -- Add each sellable item to the menu
+    for i, itemData in pairs(config.items) do
+        local hasItem = exports.ox_inventory:Search('count', itemData.item)
+        local itemCount = hasItem or 0
+        
+        table.insert(menuOptions, {
+            title = _U('sell_item', itemData.item, itemData.price),
+            description = _U('you_have', itemCount, itemData.item),
+            icon = 'fas fa-gem',
+            disabled = itemCount < 1,
+            onSelect = function()
+                sellItemToNPC(sellerIndex, itemData.item, itemData.price)
+            end,
+            metadata = {
+                item = itemData.item,
+                price = itemData.price,
+                count = itemCount
+            }
+        })
+    end
+    
+    -- Add sell all option
+    table.insert(menuOptions, {
+        title = _U('sell_all'),
+        description = _U('sell_all_desc'),
+        icon = 'fas fa-hand-holding-usd',
+        onSelect = function()
+            sellAllItems(sellerIndex)
+        end
+    })
+
+    -- Show menu using ox_lib or ESX
+    if GetResourceState('ox_lib') == 'started' then
+        lib.registerContext({
+            id = 'mining_selling_menu',
+            title = _U('mineral_trader'),
+            options = menuOptions
+        })
+        lib.showContext('mining_selling_menu')
+    else
+        -- Fallback for ESX menu
+        ESX.UI.Menu.Open('default', GetCurrentResourceName(), 'selling_menu', {
+            title = _U('mineral_trader'),
+            align = 'top-left',
+            elements = menuOptions
+        }, function(data, menu)
+            if data.current.onSelect then
+                data.current.onSelect()
+            end
+        end, function(data, menu)
+            menu.close()
+        end)
+    end
+end
+
+-- Function to sell individual item
+function sellItemToNPC(sellerIndex, itemName, price)
+    local hasItem = exports.ox_inventory:Search('count', itemName)
+    
+    if not hasItem or hasItem < 1 then
+        ESX.ShowNotification(_U('dont_have_item', itemName))
+        return
+    end
+    
+    -- Create input dialog for quantity
+    if GetResourceState('ox_lib') == 'started' then
+        local input = lib.inputDialog(_U('sell_quantity'), {
+            {
+                type = 'number',
+                label = _U('quantity'),
+                description = _U('max_quantity', hasItem),
+                required = true,
+                min = 1,
+                max = hasItem
+            }
+        })
+        
+        if input and input[1] then
+            local quantity = tonumber(input[1])
+            if quantity and quantity > 0 and quantity <= hasItem then
+                performSellAction(sellerIndex, itemName, price, quantity)
+            end
+        end
+    else
+        -- Fallback: sell 1 item at a time
+        performSellAction(sellerIndex, itemName, price, 1)
+    end
+end
+
+-- Function to sell all items
+function sellAllItems(sellerIndex)
+    local config = Config.Selling[sellerIndex]
+    local itemsToSell = {}
+    
+    -- Check what items player has
+    for _, itemData in pairs(config.items) do
+        local hasItem = exports.ox_inventory:Search('count', itemData.item)
+        if hasItem and hasItem > 0 then
+            table.insert(itemsToSell, {
+                item = itemData.item,
+                price = itemData.price,
+                quantity = hasItem
+            })
+        end
+    end
+    
+    if #itemsToSell == 0 then
+        ESX.ShowNotification(_U('no_items_to_sell'))
+        return
+    end
+    
+    -- Confirm sale
+    if GetResourceState('ox_lib') == 'started' then
+        local alert = lib.alertDialog({
+            header = _U('confirm_sell_all'),
+            content = _U('confirm_sell_all_desc'),
+            centered = true,
+            cancel = true
+        })
+        
+        if alert == 'confirm' then
+            for _, sellData in pairs(itemsToSell) do
+                performSellAction(sellerIndex, sellData.item, sellData.price, sellData.quantity)
+            end
+        end
+    else
+        -- Direct sell for ESX fallback
+        for _, sellData in pairs(itemsToSell) do
+            performSellAction(sellerIndex, sellData.item, sellData.price, sellData.quantity)
+        end
+    end
+end
+
+-- Function to perform the actual selling action
+function performSellAction(sellerIndex, itemName, price, quantity)
+    local playerPed = PlayerPedId()
+    
+    -- Play selling animation
+    RequestAnimDict("mp_common")
+    while not HasAnimDictLoaded("mp_common") do
+        Wait(1)
+    end
+    TaskPlayAnim(playerPed, "mp_common", "givetake1_a", 8.0, -8.0, 2000, 1, 0, false, false, false)
+    -- Instantly process the sale after animation
+    Wait(1000) -- Wait a short moment for animation effect (optional, adjust as needed)
+    ClearPedTasks(playerPed)
+    -- Trigger server event to process the sale
+    TriggerServerEvent("ek-mining:sellItem", sellerIndex, itemName, price, quantity)
+end
+
+-- Function to create selling ped and target zone
+function CreateSellingNPC()
+    CreateThread(function()
+        for i, data in pairs(Config.Selling) do
+            -- Request ped model
+            local pedModel = GetHashKey(data.ped)
+            RequestModel(pedModel)
+            while not HasModelLoaded(pedModel) do
+                Wait(1)
+            end
+            
+            -- Create the ped
+            local ped = CreatePed(4, pedModel, data.coords.x, data.coords.y, data.coords.z - 1.0, data.heading, false, true)
+            
+            -- Configure the ped
+            FreezeEntityPosition(ped, true)
+            SetEntityInvincible(ped, true)
+            SetBlockingOfNonTemporaryEvents(ped, true)
+            
+            -- Set ped scenario if provided
+            if data.scenario then
+                TaskStartScenarioInPlace(ped, data.scenario, 0, true)
+            end
+            
+            -- Store ped for cleanup
+            sellingPeds[i] = ped
+            
+            -- Add ox_target interaction
+            exports.ox_target:addLocalEntity(ped, {
+                {
+                    icon = 'fas fa-coins',
+                    label = _U('talk_to_trader'),
+                    onSelect = function()
+                        startSelling(i)
+                    end,
+                    canInteract = function()
+                        return HasRequiredJob()
+                    end
+                }
+            })
+            
+            -- Release model
+            SetModelAsNoLongerNeeded(pedModel)
+            
+            if Config.MiningArea[1].debug then
+                print("^2[DEBUG] Created selling NPC #" .. i .. " at: " .. tostring(data.coords) .. "^0")
+            end
+        end
+    end)
+end
+
+-- Function to cleanup selling NPCs
+function CleanupSellingNPCs()
+    for i, ped in pairs(sellingPeds) do
+        if DoesEntityExist(ped) then
+            exports.ox_target:removeLocalEntity(ped)
+            DeleteEntity(ped)
+        end
+    end
+    sellingPeds = {}
+end
+
+-- Initialize selling system
+CreateSellingNPC()
+
+-- Cleanup on resource stop
+AddEventHandler('onResourceStop', function(resourceName)
+    if resourceName == GetCurrentResourceName() then
+        CleanupSellingNPCs()
+    end
+end)
+
+-- ===============================================
 -- Blips
 -- ===============================================
 

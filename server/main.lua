@@ -182,3 +182,70 @@ CreateThread(function()
         end
     )
 end)
+
+-- Event to handle item selling
+RegisterNetEvent('ek-mining:sellItem')
+AddEventHandler('ek-mining:sellItem', function(sellerIndex, itemName, price, quantity)
+    local src = source
+    
+    -- Add job check
+    if not HasRequiredJobServer(src) then
+        TriggerClientEvent('esx:showNotification', src, _U('need_required_job_to_sell'))
+        return
+    end
+    
+    local config = Config.Selling[sellerIndex]
+    if not config then
+        print("^1[ERROR] Invalid seller index: " .. sellerIndex .. "^0")
+        return
+    end
+    
+    -- Validate item is sellable to this NPC
+    local canSell = false
+    local itemPrice = 0
+    for _, itemData in pairs(config.items) do
+        if itemData.item == itemName then
+            canSell = true
+            itemPrice = itemData.price
+            break
+        end
+    end
+    
+    if not canSell then
+        TriggerClientEvent('esx:showNotification', src, _U('trader_doesnt_buy_item'))
+        return
+    end
+    
+    -- Check if player has the item
+    local hasItem = exports.ox_inventory:Search(src, 'count', itemName)
+    if not hasItem or hasItem < quantity then
+        TriggerClientEvent('esx:showNotification', src, _U('dont_have_enough_items'))
+        return
+    end
+    
+    -- Remove items from inventory
+    local removed = exports.ox_inventory:RemoveItem(src, itemName, quantity)
+    if removed then
+        -- Calculate total payment
+        local totalPayment = itemPrice * quantity
+        
+        -- Add money to player
+        local xPlayer = ESX.GetPlayerFromId(src)
+        if xPlayer then
+            xPlayer.addMoney(totalPayment)
+            
+            -- Notify player
+            TriggerClientEvent('esx:showNotification', src, _U('sold_items', quantity, itemName, totalPayment))
+            
+            if Config.MiningArea[1].debug then
+                print("^2[DEBUG] Player " .. src .. " sold " .. quantity .. "x " .. itemName .. " for $" .. totalPayment .. "^0")
+            end
+        else
+            -- Refund items if player not found
+            exports.ox_inventory:AddItem(src, itemName, quantity)
+            TriggerClientEvent('esx:showNotification', src, _U('transaction_failed'))
+        end
+    else
+        TriggerClientEvent('esx:showNotification', src, _U('failed_to_remove_items'))
+    end
+end)

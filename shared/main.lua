@@ -142,6 +142,25 @@ Config.Smelting = {
 }
 
 -- ===============================================
+-- Selling
+-- ===============================================
+
+Config.Selling = {
+    {
+        ped = 'cs_bankman',
+        scenario = 'WORLD_HUMAN_STAND_IMPATIENT', -- Ped scenario for the selling NPC
+        coords = vector3(-97.51, -1014.34, 27.27), -- Coordinates for the selling NPC
+        heading = 195.59, -- Heading for the selling NPC
+        items = { -- Items that can be sold to this NPC
+            { item = "copper", price = 10 },
+            { item = "iron", price = 15 },
+            { item = "gold", price = 25 },
+            { item = "diamond", price = 50 },
+        }
+    }
+}
+
+-- ===============================================
 -- LOCALIZATION SYSTEM
 -- ===============================================
 
@@ -160,6 +179,31 @@ Locales = {
         ['no_pickaxe'] = 'You need a pickaxe to mine!',
         ['mining_area'] = 'Mining Area',            -- This is the blip for the mining area
         ['miner_cloakroom'] = 'Mining Cloakroom',   -- This one is used for the blip name
+
+        -- Selling
+        ['sell_items_title'] = 'Mineral Trader',
+        ['sell_items_desc'] = 'Sell your processed minerals',
+        ['sell_item'] = 'Sell %s ($%d each)',
+        ['you_have'] = 'You have: %d %s',
+        ['sell_all'] = 'Sell All Items',
+        ['sell_all_desc'] = 'Sell all your minerals at once',
+        ['mineral_trader'] = 'Mineral Trader',
+        ['dont_have_item'] = 'You don\'t have any %s to sell',
+        ['sell_quantity'] = 'How many do you want to sell?',
+        ['quantity'] = 'Quantity',
+        ['max_quantity'] = 'Maximum: %d',
+        ['no_items_to_sell'] = 'You don\'t have any items to sell',
+        ['confirm_sell_all'] = 'Sell All Items?',
+        ['confirm_sell_all_desc'] = 'Are you sure you want to sell all your minerals?',
+        ['selling_items'] = 'Selling items...',
+        ['sale_cancelled'] = 'Sale cancelled',
+        ['talk_to_trader'] = 'Talk to Trader',
+        ['sold_items'] = 'Sold %dx %s for $%d',
+        ['need_required_job_to_sell'] = 'You need to be a ' .. (Config.RequiredJob or 'worker') .. ' to sell items!',
+        ['trader_doesnt_buy_item'] = 'This trader doesn\'t buy this item',
+        ['dont_have_enough_items'] = 'You don\'t have enough items to sell',
+        ['transaction_failed'] = 'Transaction failed',
+        ['failed_to_remove_items'] = 'Failed to remove items from inventory',
 
         -- Target Labels
         ['mine_stone'] = 'Mine Stone',
@@ -248,6 +292,31 @@ Locales = {
         ['no_pickaxe'] = 'Szükséged van egy csákányra a bányászathoz!',
         ['mining_area'] = 'Bányászati Terület',
         ['miner_cloakroom'] = 'Bányász Öltöző',
+
+        -- Selling
+        ['sell_items_title'] = 'Érc eladó',
+        ['sell_items_desc'] = 'Add el a feldolgozott ásványaidat',
+        ['sell_item'] = '%s eladása (%d$ darabonként)',
+        ['you_have'] = 'Nálad van: %d %s',
+        ['sell_all'] = 'Minden eladása',
+        ['sell_all_desc'] = 'Add el az összes ásványt egyszerre',
+        ['mineral_trader'] = 'Érc eladó',
+        ['dont_have_item'] = 'Nincs nálad %s amit eladhatsz',
+        ['sell_quantity'] = 'Mennyit szeretnél eladni?',
+        ['quantity'] = 'Mennyiség',
+        ['max_quantity'] = 'Maximum: %d',
+        ['no_items_to_sell'] = 'Nincs nálad semmi amit eladhatsz',
+        ['confirm_sell_all'] = 'Minden eladása?',
+        ['confirm_sell_all_desc'] = 'Biztos vagy benne, hogy el akarod adni az összes ásványt?',
+        ['selling_items'] = 'Tárgyak eladása...',
+        ['sale_cancelled'] = 'Eladás megszakítva',
+        ['talk_to_trader'] = 'Beszélj a kereskedővel',
+        ['sold_items'] = 'Eladtál %dx %s %d$-ért',
+        ['need_required_job_to_sell'] = 'Szükséged van ' .. (Config.RequiredJob or 'munkás') .. ' munkára az eladáshoz!',
+        ['trader_doesnt_buy_item'] = 'Ez a kereskedő nem veszi meg ezt a tárgyat',
+        ['dont_have_enough_items'] = 'Nincs elég tárgyad az eladáshoz',
+        ['transaction_failed'] = 'Tranzakció sikertelen',
+        ['failed_to_remove_items'] = 'Nem sikerült eltávolítani a tárgyakat',
 
         -- Target Labels
         ['mine_stone'] = 'Kő kibányászása',
